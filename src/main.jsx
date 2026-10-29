@@ -23,6 +23,8 @@ import './styles.css';
 
 const API_BASE = import.meta.env?.VITE_API_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:3002/api' : '/api');
 const PAGE_SIZE = 100;
+const POWER_BI_REPORT_URL = 'https://app.powerbi.com/reportEmbed?reportId=8959786d-1e92-4383-9314-7aedc3356532&groupId=me';
+const POWER_BI_TABLE = 'Datos Power BI (2)';
 
 function getPowerBiEmbedUrl(reportUrl) {
   if (!reportUrl) return '';
@@ -241,7 +243,6 @@ function App() {
   const loggedIn = Boolean(session?.token && session?.user);
   const user = session?.user || null;
   const [view, setView] = useState('dashboard');
-  const [powerBiReportUrl, setPowerBiReportUrl] = useState(() => localStorage.getItem('powerBiReportUrl') || '');
   const [records, setRecords] = useState(initialRecords);
   const [summary, setSummary] = useState(null);
   const [recordFilters, setRecordFilters] = useState(blankRecordFilters);
@@ -316,15 +317,6 @@ function App() {
     });
     const data = await apiRequest(`/powerbi/seroperfiles${params.size ? `?${params}` : ''}`);
     return data.data;
-  }
-
-  function updatePowerBiReportUrl(url) {
-    setPowerBiReportUrl(url);
-    if (url) {
-      localStorage.setItem('powerBiReportUrl', url);
-    } else {
-      localStorage.removeItem('powerBiReportUrl');
-    }
   }
 
   const metrics = useMemo(() => {
@@ -412,7 +404,7 @@ function App() {
         </header>
 
         {view === 'upload' && <BulkUpload apiRequest={apiRequest} />}
-        {view === 'dashboard' && <Dashboard records={summary?.recent || records} metrics={metrics} summary={summary} powerBiReportUrl={powerBiReportUrl} onConfigurePowerBi={() => setView('powerbi')} />}
+        {view === 'dashboard' && <Dashboard records={summary?.recent || records} metrics={metrics} summary={summary} onOpenPowerBi={() => setView('powerbi')} />}
         {view === 'records' && (
           <Records
             records={records}
@@ -426,7 +418,7 @@ function App() {
           />
         )}
         {view === 'form' && <RecordForm form={form} setForm={setForm} onSubmit={submitRecord} />}
-        {view === 'powerbi' && <PowerBiPanel apiRequest={apiRequest} reportUrl={powerBiReportUrl} onReportUrlChange={updatePowerBiReportUrl} />}
+        {view === 'powerbi' && <PowerBiPanel apiRequest={apiRequest} />}
         {view === 'password' && (
           <ChangePasswordForm
             onSubmit={async (passwords) => {
@@ -540,7 +532,7 @@ function ChangePasswordForm({ onSubmit }) {
   );
 }
 
-function Dashboard({ records, metrics, summary, powerBiReportUrl, onConfigurePowerBi }) {
+function Dashboard({ records, metrics, summary, onOpenPowerBi }) {
   const byDisease = summary?.byDisease || options.enfermedad.map((disease) => ({
     disease,
     value: records.filter((record) => record.enfermedad === disease).length,
@@ -551,23 +543,13 @@ function Dashboard({ records, metrics, summary, powerBiReportUrl, onConfigurePow
 
   return (
     <div className="content-stack">
-      {powerBiReportUrl ? (
         <section className="panel powerbi-dashboard-panel">
           <div className="panel-title">
             <h2>Reporte Power BI</h2>
-            <button className="secondary compact" type="button" onClick={onConfigurePowerBi}>Cambiar reporte</button>
+            <button className="secondary compact" type="button" onClick={onOpenPowerBi}>Ver filtros de Power BI</button>
           </div>
-          <iframe title="Reporte Power BI" src={getPowerBiEmbedUrl(powerBiReportUrl)} allowFullScreen />
+          <iframe title="Reporte Power BI" src={getPowerBiEmbedUrl(POWER_BI_REPORT_URL)} allowFullScreen />
         </section>
-      ) : (
-        <section className="panel powerbi-empty-panel">
-          <div>
-            <h2>Usa Power BI para las graficas</h2>
-            <p>Configura un enlace de reporte Power BI para verlo directamente aqui arriba del dashboard.</p>
-          </div>
-          <button className="primary small" type="button" onClick={onConfigurePowerBi}>Configurar Power BI</button>
-        </section>
-      )}
       <section className="kpi-grid">
         <Kpi icon={Table2} label="Registros" value={metrics.total} trend="13,586 en Excel base" />
         <Kpi icon={Check} label="Positivos" value={metrics.positives} trend="Interpretacion registrada" />
@@ -948,16 +930,9 @@ function Select({ label, value, options: items, onChange }) {
   );
 }
 
-function PowerBiPanel({ apiRequest, reportUrl, onReportUrlChange }) {
-  const [draftReportUrl, setDraftReportUrl] = useState(reportUrl);
-  // El reporte publicado contiene una tabla antigua vacía ("Datos Power BI")
-  // y la tabla que realmente alimenta las visualizaciones ("Datos Power BI (2)").
-  // Migramos la configuración anterior para que los filtros apunten al modelo real.
-  const [powerBiTable, setPowerBiTable] = useState(() => {
-    const storedTable = localStorage.getItem('powerBiTableName');
-    return !storedTable || storedTable === 'Datos Power BI' ? 'Datos Power BI (2)' : storedTable;
-  });
-  const [urlError, setUrlError] = useState('');
+function PowerBiPanel({ apiRequest }) {
+  const reportUrl = POWER_BI_REPORT_URL;
+  const powerBiTable = POWER_BI_TABLE;
   const [filterOptions, setFilterOptions] = useState(null);
   const [dataFilters, setDataFilters] = useState({ empresa: '', flujo: '', anio: '', trimestre: '', enfermedad: '', funcion: '' });
   const [selectedFields, setSelectedFields] = useState(['fecha', 'empresa', 'flujo', 'granja', 'enfermedad', 'funcion', 'edad', 'resultado', 'puntoCorte', 'interpretacion', 'trimestre', 'anio']);
@@ -982,13 +957,6 @@ function PowerBiPanel({ apiRequest, reportUrl, onReportUrlChange }) {
   useEffect(() => {
     apiRequest('/seroperfiles/filters').then(setFilterOptions).catch((error) => setDataError(error.message));
   }, []);
-
-  useEffect(() => {
-    if (powerBiTable === 'Datos Power BI') {
-      setPowerBiTable('Datos Power BI (2)');
-      localStorage.setItem('powerBiTableName', 'Datos Power BI (2)');
-    }
-  }, [powerBiTable]);
 
   function toggleField(key) {
     setSelectedFields((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
@@ -1087,20 +1055,6 @@ function PowerBiPanel({ apiRequest, reportUrl, onReportUrlChange }) {
     } catch (error) { setDataError(error.message); } finally { setPreparing(false); }
   }
 
-  function saveReportUrl() {
-    try {
-      const url = new URL(draftReportUrl.trim());
-      if (url.protocol !== 'https:' || url.hostname !== 'app.powerbi.com') {
-        throw new Error('Usa una URL HTTPS del dominio app.powerbi.com.');
-      }
-      setUrlError('');
-      onReportUrlChange(url.toString());
-      localStorage.setItem('powerBiTableName', powerBiTable.trim() || 'Datos Power BI');
-    } catch (error) {
-      setUrlError(error.message === 'Invalid URL' ? 'Ingresa una URL válida.' : error.message);
-    }
-  }
-
   function getFilteredReportUrl() {
     if (!reportUrl) {
       return '';
@@ -1134,20 +1088,10 @@ function PowerBiPanel({ apiRequest, reportUrl, onReportUrlChange }) {
   }
 
   function openFilteredPowerBi() {
-    const filteredUrl = getFilteredReportUrl();
-    if (!filteredUrl) {
-      setUrlError('Primero configura y guarda la URL del reporte de Power BI.');
-      return;
-    }
-    window.open(filteredUrl, '_blank', 'noopener,noreferrer');
-    setUrlError('');
+    window.open(getFilteredReportUrl(), '_blank', 'noopener,noreferrer');
   }
 
   const filteredReportUrl = getFilteredReportUrl();
-
-  function scrollToPowerBiConfig() {
-    document.getElementById('powerbi-report-config')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
 
   return (
     <section className="powerbi-only">
@@ -1167,8 +1111,8 @@ function PowerBiPanel({ apiRequest, reportUrl, onReportUrlChange }) {
           {Object.entries(dataFilters).filter(([, value]) => value).length ? Object.entries(dataFilters).filter(([, value]) => value).map(([key, value]) => <span key={key}>{filterDisplayNames[key]} <b>{value}</b></span>) : <span>Mostrando todos los registros. Usa estos filtros para acotar el análisis.</span>}
         </div>
         <div className="powerbi-open-report">
-          <div><strong>{reportUrl ? '¿Listo para ver el reporte en Power BI?' : 'Configura primero un reporte publicado de Power BI'}</strong><span>{reportUrl ? 'Abre el reporte publicado con los filtros seleccionados en esta pantalla.' : 'Aún falta pegar y guardar la URL de inserción del reporte.'}</span></div>
-          {reportUrl ? <button className="primary small" type="button" onClick={openFilteredPowerBi}><BarChart3 size={17} /> Abrir Power BI filtrado</button> : <button className="secondary" type="button" onClick={scrollToPowerBiConfig}>Configurar URL del reporte</button>}
+          <div><strong>Reporte de seroperfiles en Power BI</strong><span>Abre el reporte con los filtros seleccionados en esta pantalla.</span></div>
+          <button className="primary small" type="button" onClick={openFilteredPowerBi}><BarChart3 size={17} /> Abrir Power BI filtrado</button>
         </div>
         <div className="powerbi-visual-grid">
           <div className="powerbi-pivot-wrap">
@@ -1196,61 +1140,8 @@ function PowerBiPanel({ apiRequest, reportUrl, onReportUrlChange }) {
           </div>
         </div>
       </div>
-      <div className="panel powerbi-control-panel" id="powerbi-report-config">
-        <div className="panel-title">
-          <h2>Graficas Power BI</h2>
-          <span>{reportUrl ? 'Reporte configurado' : 'Pega el enlace del reporte'}</span>
-        </div>
-        <div className="powerbi-setup-grid">
-          <div className="powerbi-step active">
-            <b>1</b>
-            <span>Crea tus graficas en Power BI Desktop</span>
-          </div>
-          <div className="powerbi-step active">
-            <b>2</b>
-            <span>Publica el reporte en Power BI Service</span>
-          </div>
-          <div className="powerbi-step active">
-            <b>3</b>
-            <span>Pega aqui la URL de insercion</span>
-          </div>
-        </div>
-        <label className="field powerbi-url-field">
-          <span>URL del reporte Power BI</span>
-          <input
-            value={draftReportUrl}
-            onChange={(event) => setDraftReportUrl(event.target.value)}
-            placeholder="https://app.powerbi.com/reportEmbed?reportId=..."
-          />
-        </label>
-        <label className="field powerbi-url-field">
-          <span>Tabla del modelo en Power BI</span>
-          <input value={powerBiTable} onChange={(event) => setPowerBiTable(event.target.value)} placeholder="Datos Power BI (2)" />
-        </label>
-        {urlError && <p className="form-error">{urlError}</p>}
-        <div className="button-row">
-          <button className="primary small" type="button" onClick={saveReportUrl}>
-            <Check size={17} /> Mostrar graficas
-          </button>
-          <button className="secondary" type="button" onClick={() => { setDraftReportUrl(''); onReportUrlChange(''); }}>
-            <Filter size={17} /> Quitar reporte
-          </button>
-        </div>
-        <p className="powerbi-note">
-          Usa la URL del reporte publicado. La tabla debe llamarse igual que en el panel Datos de Power BI; en este reporte es <b>Datos Power BI (2)</b>.
-        </p>
-      </div>
-
       <div className="panel powerbi-report-surface">
-        {reportUrl ? (
-          <iframe title="Graficas Power BI" src={filteredReportUrl} allowFullScreen />
-        ) : (
-          <div className="powerbi-placeholder">
-            <BarChart3 size={46} />
-            <h2>Aqui apareceran tus graficas de Power BI</h2>
-            <p>Pega una URL de reporte para reemplazar este espacio por el dashboard real de Power BI.</p>
-          </div>
-        )}
+        <iframe title="Graficas Power BI" src={filteredReportUrl} allowFullScreen />
       </div>
     </section>
   );
