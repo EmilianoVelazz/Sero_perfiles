@@ -33,8 +33,28 @@ La cuenta inicial de una instalación nueva es `admin@empresa.com` con contrase�
 
 `npm run build` usa Vite en Linux (incluido Vercel) y conserva la compilacion
 alternativa de PowerShell en Windows. El resultado se guarda en `dist`.
-El servidor actual requiere MySQL; importar las tablas a Supabase no cambia
-automaticamente la conexion de la API a PostgreSQL.
+Sin `DATABASE_URL`, el servidor local usa MySQL. Con `DATABASE_URL`, usa PostgreSQL.
+
+### Vercel y Supabase
+
+La API se publica desde `api/index.js`. El frontend usa `/api` cuando no esta
+en localhost; no configures una URL de localhost en Vercel.
+
+Configura en Vercel (Production y Preview):
+
+- `DATABASE_URL`: URI del Transaction pooler de Supabase, con la contrasena
+  y los caracteres especiales codificados como URL. No la publiques en Git.
+- `AUTH_SECRET`: cadena aleatoria de al menos 32 caracteres.
+- `CLIENT_ORIGIN`: origen HTTPS del frontend.
+- `API_PUBLIC_URL`: origen HTTPS de la API, para enlaces de Power BI.
+
+La conexion PostgreSQL verifica el certificado TLS. Si necesitas un certificado
+de CA adicional, guardalo como PEM en `DATABASE_CA`. Las claves publicables de
+Supabase no sustituyen `DATABASE_URL` ni dan acceso a las tablas privadas.
+
+Antes de publicar, ejecutar `node --test server/database.test.js` y
+`npm run build`. Tras configurar los secretos, comprobar `/api/health`, el inicio
+de sesion, los filtros y los reportes. El respaldo local permanece privado.
 
 - `AUTH_SECRET`: firma las sesiones; es obligatoria en producción.
 - `CLIENT_ORIGIN`: orígenes web permitidos, separados por comas.

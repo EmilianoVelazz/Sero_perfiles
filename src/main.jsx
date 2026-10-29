@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import './styles.css';
 
-const API_BASE = import.meta.env?.VITE_API_URL || 'http://127.0.0.1:3002/api';
+const API_BASE = import.meta.env?.VITE_API_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:3002/api' : '/api');
 const PAGE_SIZE = 100;
 
 function getPowerBiEmbedUrl(reportUrl) {

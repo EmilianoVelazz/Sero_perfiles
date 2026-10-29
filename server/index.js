@@ -2,30 +2,26 @@ import cors from 'cors';
 import crypto from 'node:crypto';
 import dotenv from 'dotenv';
 import express from 'express';
-import mysql from 'mysql2/promise';
+import { createDatabase } from './database.js';
 
 dotenv.config();
 
 const app = express();
 const port = Number(process.env.API_PORT || 3002);
-const publicApiUrl = (process.env.API_PUBLIC_URL || `http://127.0.0.1:${port}`).replace(/\/$/, '');
+const deploymentHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+const publicApiUrl = (process.env.API_PUBLIC_URL || (deploymentHost ? `https://${deploymentHost}` : `http://127.0.0.1:${port}`)).replace(/\/$/, '');
 const authSecret = process.env.AUTH_SECRET || 'solo-desarrollo-cambia-esta-clave';
 const tokenLifetimeSeconds = 8 * 60 * 60;
+
+if (process.env.VERCEL && (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32)) {
+  throw new Error('Configura AUTH_SECRET con al menos 32 caracteres en Vercel.');
+}
 
 if (!process.env.AUTH_SECRET) {
   console.warn('ADVERTENCIA: configura AUTH_SECRET antes de publicar la API.');
 }
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'registro_seroperfiles',
-  waitForConnections: true,
-  connectionLimit: 10,
-  namedPlaceholders: true,
-});
+const pool = createDatabase();
 
 const configuredOrigins = (process.env.CLIENT_ORIGIN || '')
   .split(',')
@@ -726,6 +722,10 @@ app.use((error, _request, response, _next) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`API lista en http://127.0.0.1:${port}`);
-});
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(port, '127.0.0.1', () => {
+    console.log(`API lista en http://127.0.0.1:${port}`);
+  });
+}
