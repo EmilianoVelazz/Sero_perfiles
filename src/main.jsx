@@ -23,7 +23,7 @@ import './styles.css';
 
 const API_BASE = import.meta.env?.VITE_API_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:3002/api' : '/api');
 const PAGE_SIZE = 100;
-const POWER_BI_REPORT_URL = 'https://app.powerbi.com/reportEmbed?reportId=8959786d-1e92-4383-9314-7aedc3356532&groupId=me';
+const POWER_BI_REPORT_URL = 'https://app.powerbi.com/reportEmbed?reportId=8959786d-1e92-4383-9314-7aedc3356532&autoAuth=true';
 const POWER_BI_TABLE = 'Datos Power BI (2)';
 
 function getPowerBiEmbedUrl(reportUrl) {
@@ -38,6 +38,23 @@ function getPowerBiEmbedUrl(reportUrl) {
   } catch {
     return reportUrl;
   }
+}
+
+function PowerBiReport({ src, title }) {
+  const [reloadCount, setReloadCount] = useState(0);
+
+  return (
+    <>
+      <div className="powerbi-access-help">
+        <p>Power BI requiere iniciar sesión con una cuenta de Microsoft que tenga acceso a este reporte. Si queda en blanco, ábrelo en una pestaña, inicia sesión y después recárgalo aquí. En el navegador integrado, puedes necesitar abrir el reporte en Edge o Chrome.</p>
+        <div className="button-row">
+          <a className="secondary compact" href={src} target="_blank" rel="noopener noreferrer">Abrir Power BI</a>
+          <button className="secondary compact" type="button" onClick={() => setReloadCount((count) => count + 1)}>Recargar reporte</button>
+        </div>
+      </div>
+      <iframe key={reloadCount} title={title} src={src} allowFullScreen />
+    </>
+  );
 }
 
 const initialRecords = [
@@ -548,7 +565,7 @@ function Dashboard({ records, metrics, summary, onOpenPowerBi }) {
             <h2>Reporte Power BI</h2>
             <button className="secondary compact" type="button" onClick={onOpenPowerBi}>Ver filtros de Power BI</button>
           </div>
-          <iframe title="Reporte Power BI" src={getPowerBiEmbedUrl(POWER_BI_REPORT_URL)} allowFullScreen />
+          <PowerBiReport title="Reporte Power BI" src={getPowerBiEmbedUrl(POWER_BI_REPORT_URL)} />
         </section>
       <section className="kpi-grid">
         <Kpi icon={Table2} label="Registros" value={metrics.total} trend="13,586 en Excel base" />
@@ -1141,7 +1158,7 @@ function PowerBiPanel({ apiRequest }) {
         </div>
       </div>
       <div className="panel powerbi-report-surface">
-        <iframe title="Graficas Power BI" src={filteredReportUrl} allowFullScreen />
+        <PowerBiReport title="Graficas Power BI" src={filteredReportUrl} />
       </div>
     </section>
   );
