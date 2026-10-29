@@ -56,6 +56,13 @@ Antes de publicar, ejecutar `node --test server/database.test.js` y
 `npm run build`. Tras configurar los secretos, comprobar `/api/health`, el inicio
 de sesion, los filtros y los reportes. El respaldo local permanece privado.
 
+`node tools/check-database.js` verifica la conexion desde `.env.local`.
+`node tools/verify-api.js` comprueba las rutas con datos reales, sin escribirlos.
+Para comprobar produccion, establece `VERIFY_API_ORIGIN` con su origen HTTPS y
+guarda el `AUTH_SECRET` correspondiente en `.env.local`; el script usa una sesion
+temporal y no muestra el token. En Windows, si Node requiere los certificados
+del sistema para HTTPS, ejecutalo con `node --use-system-ca`.
+
 - `AUTH_SECRET`: firma las sesiones; es obligatoria en producción.
 - `CLIENT_ORIGIN`: orígenes web permitidos, separados por comas.
 - `API_PUBLIC_URL`: URL pública usada en la información de Power BI.

@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
+import fs from 'node:fs';
 import { createDatabase } from '../server/database.js';
 
 dotenv.config({ path: '.env.local', quiet: true });
+process.env.DATABASE_CA ||= fs.readFileSync(new URL('../server/certs/supabase-prod-ca-2021.crt', import.meta.url), 'utf8');
 const database = createDatabase();
 try {
   const [rows] = await database.query(`SELECT

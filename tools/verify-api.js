@@ -8,13 +8,22 @@ import { createDatabase } from '../server/database.js';
 dotenv.config({ path: '.env.local', quiet: true });
 if (!process.env.DATABASE_URL) throw new Error('Configura DATABASE_URL en .env.local');
 process.env.DATABASE_CA ||= fs.readFileSync(new URL('../server/certs/supabase-prod-ca-2021.crt', import.meta.url), 'utf8');
-// Isolate the test from deployed sessions; only read existing data.
-process.env.AUTH_SECRET = crypto.randomBytes(32).toString('hex');
-process.env.VERCEL = '1';
-const { default: app } = await import('../server/index.js');
-const server = app.listen(0, '127.0.0.1');
-await once(server, 'listening');
-const origin = `http://127.0.0.1:${server.address().port}`;
+const remoteOrigin = process.env.VERIFY_API_ORIGIN;
+let server;
+let origin = remoteOrigin;
+if (remoteOrigin) {
+  const target = new URL(remoteOrigin);
+  if (target.protocol !== 'https:' || target.origin !== remoteOrigin) throw new Error('Se requiere un origen HTTPS valido');
+  if (!process.env.AUTH_SECRET) throw new Error('Configura AUTH_SECRET en .env.local para verificar produccion');
+} else {
+  // Isolate local tests from deployed sessions; only read existing data.
+  process.env.AUTH_SECRET = crypto.randomBytes(32).toString('hex');
+  process.env.VERCEL = '1';
+  const { default: app } = await import('../server/index.js');
+  server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  origin = `http://127.0.0.1:${server.address().port}`;
+}
 const db = createDatabase();
 try {
   const health = await fetch(`${origin}/api/health`);
@@ -51,9 +60,9 @@ try {
   }
   console.log(JSON.stringify({ ok: true, health: true, unauthenticatedRejected: true }));
 } catch (error) {
-  console.error(JSON.stringify({ ok: false, code: error.code || 'API_VERIFICATION_FAILED', message: error.name === 'AssertionError' ? error.message : 'No se pudo verificar la API' }));
+  console.error(JSON.stringify({ ok: false, code: error.code || error.cause?.code || 'API_VERIFICATION_FAILED', message: error.name === 'AssertionError' ? error.message : 'No se pudo verificar la API' }));
   process.exitCode = 1;
 } finally {
-  server.close();
+  server?.close();
   await db.end();
 }
