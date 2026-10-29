@@ -31,6 +31,11 @@ La cuenta inicial de una instalación nueva es `admin@empresa.com` con contrase�
 
 ## Variables principales
 
+`npm run build` usa Vite en Linux (incluido Vercel) y conserva la compilacion
+alternativa de PowerShell en Windows. El resultado se guarda en `dist`.
+El servidor actual requiere MySQL; importar las tablas a Supabase no cambia
+automaticamente la conexion de la API a PostgreSQL.
+
 - `AUTH_SECRET`: firma las sesiones; es obligatoria en producción.
 - `CLIENT_ORIGIN`: orígenes web permitidos, separados por comas.
 - `API_PUBLIC_URL`: URL pública usada en la información de Power BI.

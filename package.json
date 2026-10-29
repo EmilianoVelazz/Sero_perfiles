@@ -8,7 +8,7 @@
     "dev": "node server/static-server.js",
     "dev:vite": "npm run prepare:vite && vite --host 127.0.0.1",
     "dev:api": "node server/index.js",
-    "build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/build-static.ps1",
+    "build": "node tools/build.js",
     "preview": "node server/static-server.js"
   },
   "dependencies": {
