@@ -36,7 +36,7 @@ const allowedOrigins = configuredOrigins.length
   : [/^http:\/\/127\.0\.0\.1:\d+$/, /^http:\/\/localhost:\d+$/];
 
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 const selectColumns = `
   id,
@@ -97,6 +97,22 @@ const powerBiFields = [
   { key: 'creadoEn', label: 'Creado en', type: 'Fecha y hora' },
   { key: 'actualizadoEn', label: 'Actualizado en', type: 'Fecha y hora' },
 ];
+
+const importCatalogs = {
+  empresa: ['Vallyava', 'Vallpork'],
+  flujo: ['Joya', 'Tejas', 'FASA', 'Zacatecas', 'Sanfandila', 'Tepuza', 'Alamos', 'Waris'],
+  funcion: ['Linea', 'Hembra', 'GDU'],
+  laboratorio: ['DCV', 'UNAM', 'Lapisa', 'BI', 'LIVE'],
+  enfermedad: ['Mycoplasma', 'PRRS', 'Influenza', 'APP', 'Ojo Azul', 'Influenza H1N2'],
+  tecnica: ['ELISA', 'VSN'],
+  interpretacion: ['Positivo', 'Negativo', 'Sospechoso'],
+  muestra: ['Suero'],
+};
+
+const importCatalogLabels = {
+  empresa: 'Empresa', flujo: 'Flujo', funcion: 'Función', laboratorio: 'Laboratorio',
+  enfermedad: 'Enfermedad', tecnica: 'Técnica', interpretacion: 'Interpretación', muestra: 'Muestra',
+};
 
 function emptyToNull(value) {
   return value === '' || value === undefined ? null : value;
@@ -201,6 +217,16 @@ function isNonNegativeNumber(value) {
     || (Number.isFinite(Number(value)) && Number(value) >= 0);
 }
 
+function isNonNegativeInteger(value) {
+  return value === null || value === '' || value === undefined
+    || (Number.isInteger(Number(value)) && Number(value) >= 0);
+}
+
+function canonicalImportValue(value) {
+  return String(value ?? '').trim().toLocaleLowerCase('es-MX')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+}
+
 function validateRecord(record) {
   const errors = [];
   const date = parseRecordDate(record.fecha);
@@ -208,12 +234,66 @@ function validateRecord(record) {
   if (!String(record.empresa || '').trim()) errors.push('La empresa es obligatoria.');
   if (!String(record.granja || '').trim()) errors.push('La granja es obligatoria.');
   if (!String(record.enfermedad || '').trim()) errors.push('La enfermedad es obligatoria.');
-  for (const [key, label] of [['edad', 'Edad'], ['numMuestras', 'Número de muestras'], ['resultado', 'Resultado'], ['puntoCorte', 'Punto de corte']]) {
+  for (const [key, label] of [['edad', 'Edad'], ['resultado', 'Resultado'], ['puntoCorte', 'Punto de corte']]) {
     if (!isNonNegativeNumber(record[key])) errors.push(`${label} debe ser un número no negativo.`);
+  }
+  if (!isNonNegativeInteger(record.numMuestras)) errors.push('Número de muestras debe ser un entero no negativo.');
+  const limits = { empresa: 120, flujo: 120, granja: 180, caseta: 80, lote: 100, funcion: 100, identidad: 100, muestra: 100, laboratorio: 120, caso: 120, enfermedad: 140, tecnica: 100, interpretacion: 80 };
+  for (const [key, limit] of Object.entries(limits)) {
+    const value = record[key];
+    if (value !== null && value !== undefined && String(value).length > limit) errors.push(`${key} excede el máximo de ${limit} caracteres.`);
+    if (value !== null && value !== undefined && /[\u0000-\u001F\u007F]/.test(String(value))) errors.push(`${key} contiene caracteres de control no permitidos.`);
+    if (value && !/^[\p{L}\p{N}\s.,()/#-]+$/u.test(String(value))) errors.push(`${key} contiene caracteres especiales no permitidos.`);
+    if (value && /^[=+@]/.test(String(value).trim())) errors.push(`${key} no puede contener una fórmula.`);
+  }
+  for (const [key, allowedValues] of Object.entries(importCatalogs)) {
+    const value = String(record[key] ?? '').trim();
+    if (value && !allowedValues.some((allowed) => canonicalImportValue(allowed) === canonicalImportValue(value))) {
+      errors.push(`${importCatalogLabels[key]} no es una opción válida.`);
+    }
   }
 
   return { errors, date };
 }
+
+function recordParams(record, date, userId) {
+  return {
+    fecha: record.fecha,
+    semana: isoWeek(date),
+    trimestre: Math.floor(date.getUTCMonth() / 3) + 1,
+    anio: date.getUTCFullYear(),
+    razon: emptyToNull(record.razon) || 'Seroperfil',
+    empresa: record.empresa,
+    flujo: emptyToNull(record.flujo),
+    granja: record.granja,
+    caseta: emptyToNull(record.caseta),
+    lote: emptyToNull(record.lote),
+    funcion: emptyToNull(record.funcion),
+    edad: emptyToNull(record.edad),
+    identidad: emptyToNull(record.identidad),
+    muestra: emptyToNull(record.muestra) || 'Suero',
+    laboratorio: emptyToNull(record.laboratorio),
+    no_caso: emptyToNull(record.caso),
+    num_muestras: emptyToNull(record.numMuestras),
+    enfermedad: record.enfermedad,
+    tecnica: emptyToNull(record.tecnica),
+    resultado: emptyToNull(record.resultado),
+    punto_corte: emptyToNull(record.puntoCorte),
+    interpretacion: emptyToNull(record.interpretacion),
+    comentarios: emptyToNull(record.comentarios),
+    creado_por: userId,
+  };
+}
+
+const insertSeroperfilSql = `INSERT INTO seroperfiles (
+  fecha, semana, trimestre, anio, razon, empresa, flujo, granja, caseta, lote,
+  funcion, edad, identidad, muestra, laboratorio, no_caso, num_muestras,
+  enfermedad, tecnica, resultado, punto_corte, interpretacion, comentarios, creado_por
+) VALUES (
+  :fecha, :semana, :trimestre, :anio, :razon, :empresa, :flujo, :granja, :caseta, :lote,
+  :funcion, :edad, :identidad, :muestra, :laboratorio, :no_caso, :num_muestras,
+  :enfermedad, :tecnica, :resultado, :punto_corte, :interpretacion, :comentarios, :creado_por
+)`;
 
 function csvValue(value) {
   if (value === null || value === undefined) return '';
@@ -223,7 +303,7 @@ function csvValue(value) {
 }
 
 function buildSeroperfilesFilters(query) {
-  const { q, anio, empresa, flujo, enfermedad, laboratorio, interpretacion, fecha_desde, fecha_hasta } = query;
+  const { q, anio, trimestre, empresa, flujo, enfermedad, laboratorio, interpretacion, fecha_desde, fecha_hasta } = query;
   const where = [];
   const params = {};
 
@@ -237,6 +317,11 @@ function buildSeroperfilesFilters(query) {
   if (anio) {
     where.push('anio = :anio');
     params.anio = anio;
+  }
+
+  if (trimestre) {
+    where.push('trimestre = :trimestre');
+    params.trimestre = trimestre;
   }
 
   if (empresa && empresa !== 'Todas') {
@@ -393,6 +478,13 @@ app.get('/api/seroperfiles/filters', async (_request, response) => {
     GROUP BY empresa
     ORDER BY empresa
   `);
+  const [trimestres] = await pool.query(`
+    SELECT trimestre AS value, COUNT(*) AS total
+    FROM seroperfiles
+    WHERE trimestre IS NOT NULL
+    GROUP BY trimestre
+    ORDER BY trimestre
+  `);
   const [flujos] = await pool.query(`
     SELECT flujo AS value, COUNT(*) AS total
     FROM seroperfiles
@@ -422,7 +514,7 @@ app.get('/api/seroperfiles/filters', async (_request, response) => {
     ORDER BY interpretacion
   `);
 
-  response.json({ anios, empresas, flujos, enfermedades, laboratorios, interpretaciones });
+  response.json({ anios, trimestres, empresas, flujos, enfermedades, laboratorios, interpretaciones });
 });
 
 app.get('/api/seroperfiles/summary', async (_request, response) => {
@@ -570,6 +662,44 @@ app.get('/api/powerbi/seroperfiles.csv', async (request, response) => {
   response.send(`\uFEFF${csv}`);
 });
 
+app.post('/api/seroperfiles/bulk', requireWriteRole, async (request, response) => {
+  const records = request.body;
+  if (!Array.isArray(records) || records.length === 0) {
+    return response.status(400).json({ message: 'Envía al menos un registro para importar.' });
+  }
+  if (records.length > 5000) {
+    return response.status(400).json({ message: 'El límite por archivo es de 5,000 registros.' });
+  }
+
+  const prepared = [];
+  const errors = [];
+  records.forEach((record, index) => {
+    const { errors: rowErrors, date } = validateRecord(record || {});
+    const row = Number(record?._rowNumber) || index + 2;
+    if (rowErrors.length) {
+      rowErrors.forEach((message) => errors.push({ row, message }));
+    } else {
+      prepared.push(recordParams(record, date, request.user.sub));
+    }
+  });
+  if (errors.length) {
+    return response.status(400).json({ message: 'El archivo contiene datos inválidos.', errors });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    for (const params of prepared) await connection.execute(insertSeroperfilSql, params);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+  response.status(201).json({ message: `${prepared.length.toLocaleString('es-MX')} registros importados correctamente.`, imported: prepared.length });
+});
+
 app.post('/api/seroperfiles', requireWriteRole, async (request, response) => {
   const record = request.body || {};
   const { errors, date } = validateRecord(record);
@@ -577,45 +707,8 @@ app.post('/api/seroperfiles', requireWriteRole, async (request, response) => {
     return response.status(400).json({ message: errors.join(' ') });
   }
 
-  const params = {
-    fecha: record.fecha,
-    semana: isoWeek(date),
-    trimestre: Math.floor(date.getUTCMonth() / 3) + 1,
-    anio: date.getUTCFullYear(),
-    razon: emptyToNull(record.razon) || 'Seroperfil',
-    empresa: record.empresa,
-    flujo: emptyToNull(record.flujo),
-    granja: record.granja,
-    caseta: emptyToNull(record.caseta),
-    lote: emptyToNull(record.lote),
-    funcion: emptyToNull(record.funcion),
-    edad: emptyToNull(record.edad),
-    identidad: emptyToNull(record.identidad),
-    muestra: emptyToNull(record.muestra) || 'Suero',
-    laboratorio: emptyToNull(record.laboratorio),
-    no_caso: emptyToNull(record.caso),
-    num_muestras: emptyToNull(record.numMuestras),
-    enfermedad: record.enfermedad,
-    tecnica: emptyToNull(record.tecnica),
-    resultado: emptyToNull(record.resultado),
-    punto_corte: emptyToNull(record.puntoCorte),
-    interpretacion: emptyToNull(record.interpretacion),
-    comentarios: emptyToNull(record.comentarios),
-    creado_por: request.user.sub,
-  };
-
-  const [result] = await pool.execute(
-    `INSERT INTO seroperfiles (
-      fecha, semana, trimestre, anio, razon, empresa, flujo, granja, caseta, lote,
-      funcion, edad, identidad, muestra, laboratorio, no_caso, num_muestras,
-      enfermedad, tecnica, resultado, punto_corte, interpretacion, comentarios, creado_por
-    ) VALUES (
-      :fecha, :semana, :trimestre, :anio, :razon, :empresa, :flujo, :granja, :caseta, :lote,
-      :funcion, :edad, :identidad, :muestra, :laboratorio, :no_caso, :num_muestras,
-      :enfermedad, :tecnica, :resultado, :punto_corte, :interpretacion, :comentarios, :creado_por
-    )`,
-    params,
-  );
+  const params = recordParams(record, date, request.user.sub);
+  const [result] = await pool.execute(insertSeroperfilSql, params);
 
   const [rows] = await pool.execute(
     `SELECT ${selectColumns} FROM seroperfiles WHERE id = :id`,

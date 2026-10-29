@@ -5,3 +5,14 @@ dist/
 *.log
 .DS_Store
 
+# Respaldos locales y exportaciones con datos de usuarios
+/backups/
+/migracion_supabase/registro_seroperfiles_supabase.sql
+/migracion_supabase/SOLO_DATOS_para_tablas_ya_creadas.sql
+/migracion_supabase/resumen-exportacion.json
+/migracion_supabase/verificacion-*.json
+/migracion_supabase/partes_sql_editor/
+
+# Script temporal de correccion local
+/fix_dates.js
+

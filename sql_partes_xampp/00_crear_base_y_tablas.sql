@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   nombre VARCHAR(120) NOT NULL,
   correo VARCHAR(160) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  rol ENUM('admin', 'analista', 'consulta') NOT NULL DEFAULT 'analista',
+  rol ENUM('admin', 'analista', 'consulta', 'powerbi') NOT NULL DEFAULT 'analista',
   activo TINYINT(1) NOT NULL DEFAULT 1,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

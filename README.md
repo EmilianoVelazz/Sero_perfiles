@@ -9,7 +9,7 @@ Aplicación React y Express para consultar, capturar y exportar registros sanita
 
 ## Instalación
 
-1. Importa `sql_partes_xampp/00_crear_base_y_tablas.sql` y después los archivos de datos numerados.
+1. Importa `sql_partes_xampp/00_crear_base_y_tablas.sql` y después los archivos de datos numerados. Si ya tenías la base creada, ejecuta también `sql_partes_xampp/06_agregar_rol_powerbi.sql`.
 2. Copia `.env.example` como `.env`.
 3. Cambia `AUTH_SECRET` por una cadena larga y aleatoria.
 4. Ajusta las credenciales de MySQL y las URL según el entorno.
@@ -17,6 +17,7 @@ Aplicación React y Express para consultar, capturar y exportar registros sanita
 
 ```powershell
 npm install
+npm run build
 npm run dev:api
 ```
 
@@ -44,3 +45,9 @@ npm audit
 ```
 
 Los endpoints de datos requieren `Authorization: Bearer <token>`. El token se obtiene mediante `POST /api/auth/login` y expira después de ocho horas.
+
+## Perfil Power BI
+
+El administrador puede crear una cuenta con el perfil **Power BI** desde la pantalla **Usuarios**. Esa cuenta sólo puede abrir la sección **Power BI**, cambiar su contraseña y descargar/consultar los datos de reportes; no puede ver, editar ni eliminar los registros operativos.
+
+En Power BI Desktop usa el conector **Web** y el endpoint JSON `http(s)://TU_API/api/powerbi/seroperfiles`, o descarga el CSV desde el perfil Power BI. Los campos listos para segmentadores son `empresa`, `flujo`, `anio`, `trimestre` y `enfermedad`. Como el endpoint requiere sesión, para actualización programada se debe configurar una autenticación segura de servicio o conectar Power BI directamente a MySQL con una cuenta de sólo lectura.

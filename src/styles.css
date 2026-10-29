@@ -973,14 +973,297 @@ th {
 
 .powerbi-only {
   display: grid;
-  grid-template-columns: minmax(340px, 0.42fr) minmax(0, 1fr);
+  /* Todos los bloques del flujo Power BI son independientes. Mantenerlos
+     en una columna evita que el configurador, los filtros y el iframe se
+     intenten acomodar juntos o se monten visualmente. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
-.powerbi-control-panel {
+.powerbi-builder {
+  grid-column: 1 / -1;
+  padding: 24px;
+}
+
+.powerbi-builder .panel-title { align-items: flex-start; }
+.powerbi-builder .panel-title h2 { margin: 4px 0 0; }
+
+.powerbi-builder-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.powerbi-builder h3 { margin: 0 0 11px; color: #34424b; font-size: 13px; }
+
+.powerbi-data-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.powerbi-data-filters .select-filter:last-child { grid-column: span 2; }
+
+.powerbi-field-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  max-height: 210px;
+  padding: 10px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfdfd;
+}
+
+.powerbi-field-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  color: #40505a;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.powerbi-field-list input { accent-color: var(--accent); }
+
+.powerbi-builder-actions { display: flex; gap: 10px; margin-top: 18px; }
+.powerbi-builder-actions .primary,
+.powerbi-builder-actions .secondary { width: auto; margin-top: 0; }
+
+.powerbi-data-preview {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.powerbi-data-preview > strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent-strong);
+  font-size: 13px;
+}
+
+.powerbi-visual-report {
+  grid-column: 1 / -1;
+  padding: 24px;
+}
+
+.powerbi-visual-report .panel-title h2 { margin: 4px 0 0; }
+
+.powerbi-visual-report .panel-title p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.report-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 17px 0 10px;
+  padding: 10px;
+  overflow-x: auto;
+  border: 1px solid #d8e3e8;
+  border-radius: 8px;
+  background: #f8fbfc;
+}
+
+.report-filter-bar .select-filter {
+  min-width: 135px;
+}
+
+.powerbi-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.powerbi-filter-summary span {
+  padding: 6px 10px;
+  border: 1px solid #c6ded9;
+  border-radius: 5px;
+  color: #3d4d56;
+  background: #f4fbf9;
+  font-size: 12px;
+}
+
+.powerbi-open-report {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid #b9dcd4;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #f1fbf8, #f8fcfb);
+}
+
+.powerbi-open-report strong,
+.powerbi-open-report span { display: block; }
+.powerbi-open-report strong { color: #184f49; font-size: 13px; }
+.powerbi-open-report span { margin-top: 3px; color: #5f7077; font-size: 12px; }
+.powerbi-open-report .primary { width: auto; margin: 0; white-space: nowrap; }
+
+.powerbi-visual-grid {
+  display: grid;
+  grid-template-columns: minmax(290px, 0.82fr) minmax(480px, 1.48fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.powerbi-pivot-wrap {
+  overflow: auto;
+  max-height: 430px;
+  border: 1px solid #d8e3e8;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 7px 18px rgba(28, 54, 65, 0.05);
+}
+
+.visual-section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid #e7eef1;
+  color: #1d2c35;
+}
+
+.visual-section-title strong,
+.visual-section-title span {
+  display: block;
+}
+
+.visual-section-title strong {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.visual-section-title span {
+  margin-top: 3px;
+  color: #6a7981;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.powerbi-pivot {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.powerbi-pivot th {
   position: sticky;
-  top: 24px;
+  top: 0;
+  z-index: 1;
+  padding: 9px 10px;
+  border-bottom: 1px solid #bfd0db;
+  color: #172026;
+  background: #dceaf4;
+  text-align: left;
+  white-space: normal;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.powerbi-pivot th:first-child,
+.powerbi-pivot td:first-child { width: 38%; }
+.powerbi-pivot th:nth-child(2),
+.powerbi-pivot td:nth-child(2) { width: 29%; }
+.powerbi-pivot th:nth-child(3),
+.powerbi-pivot td:nth-child(3) { width: 33%; }
+
+.powerbi-pivot td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #edf1f3;
+}
+
+.powerbi-pivot tbody tr:hover td { background: #f5faf9; }
+
+.powerbi-pivot td:not(:first-child),
+.powerbi-pivot th:not(:first-child) { text-align: right; }
+
+.powerbi-pivot .pivot-group td {
+  color: #182d3a;
+  background: #eef6f8;
+  font-weight: 800;
+}
+
+.powerbi-pivot .pivot-detail td:first-child {
+  color: #36515f;
+  font-weight: 750;
+}
+
+.powerbi-pivot .pivot-total td {
+  border-top: 2px solid #8eb6ce;
+  border-bottom: 0;
+  color: #132a39;
+  background: #dceaf4;
+  font-weight: 900;
+}
+
+.pivot-indent { padding-left: 28px !important; }
+
+.powerbi-chart-wrap {
+  min-width: 0;
+  min-height: 430px;
+  padding: 0 16px 12px;
+  border: 1px solid #d8e3e8;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 7px 18px rgba(28, 54, 65, 0.05);
+}
+
+.powerbi-chart-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 12px 0 2px;
+  color: #5c6871;
+  font-size: 12px;
+}
+
+.powerbi-chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.powerbi-chart-legend span {
+  padding: 5px 8px;
+  border: 1px solid #e4ebee;
+  border-radius: 999px;
+  background: #fafcfc;
+  white-space: nowrap;
+}
+.powerbi-chart-legend i { width: 16px; height: 3px; border-radius: 3px; }
+.result-line, .chart-result { color: #326bc3; stroke: #326bc3; }
+.cut-line, .chart-cut { color: #ea7d27; stroke: #ea7d27; }
+.powerbi-line-chart { display: block; width: 100%; min-height: 300px; overflow: visible; }
+.chart-grid-line { stroke: #dfe5e9; stroke-width: 1; }
+.chart-axis { stroke: #b7c2ca; stroke-width: 1; }
+.chart-result, .chart-cut { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.chart-result-dot { fill: #326bc3; }
+.chart-cut-dot { fill: #ea7d27; }
+.chart-label, .chart-scale { fill: #63717a; font-size: 10px; }
+.chart-scale { font-size: 10px; }
+.chart-axis-title { fill: #3a4a53; font-size: 11px; font-weight: 800; }
+.chart-empty { fill: #66737d; font-size: 13px; font-weight: 700; }
+
+.powerbi-control-panel {
+  /* En una secuencia vertical no debe flotar sobre los paneles siguientes. */
+  position: static;
+}
+
+.powerbi-control-panel,
+.powerbi-embed-filters,
+.powerbi-report-surface {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .powerbi-setup-grid {
@@ -1030,6 +1313,7 @@ th {
 }
 
 .powerbi-report-surface iframe {
+  display: block;
   height: calc(100vh - 150px);
   min-height: 620px;
 }
@@ -1111,6 +1395,18 @@ th {
     position: static;
   }
 
+  /* El reporte conserva la lectura en tabletas: la tabla y la gráfica
+     pasan a una sola columna antes de que cualquiera de las dos se comprima. */
+  .powerbi-visual-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .powerbi-control-panel,
+  .powerbi-embed-filters,
+  .powerbi-report-surface {
+    grid-column: 1 / -1;
+  }
+
   .login-visual {
     min-height: 380px;
     padding: 34px;
@@ -1180,5 +1476,531 @@ th {
 
   .bar-row {
     grid-template-columns: 96px minmax(0, 1fr) 28px;
+  }
+}
+
+/* === Action buttons in table === */
+.actions-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--surface);
+}
+
+.icon-btn.edit:hover {
+  color: #2563eb;
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.icon-btn.delete:hover {
+  color: #dc2626;
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* === Delete confirmation modal === */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-box h3 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+.modal-box p {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+button.danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+button.danger:hover {
+  background: #b91c1c;
+}
+
+/* === API status banner === */
+.api-status {
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.api-status.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.api-status.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Editing banner === */
+.editing-banner {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+/* === Carga masiva === */
+.upload-page {
+  max-width: 1080px;
+}
+
+.upload-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.upload-hero-icon,
+.upload-report-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+}
+
+.upload-hero-icon {
+  width: 58px;
+  height: 58px;
+  color: #fff;
+  background: linear-gradient(145deg, #0f766e, #115e59);
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.22);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.upload-hero h2 {
+  margin: 3px 0 5px;
+}
+
+.upload-hero p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.upload-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.upload-step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 50px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: #40505a;
+  background: #fbfdfd;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.upload-step b {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--accent-strong);
+  background: var(--green-soft);
+  font-size: 12px;
+}
+
+.upload-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+}
+
+.upload-dropzone {
+  padding: 22px;
+  border: 1.5px dashed #99c9c3;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f5fcfb, #fbfefe);
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.file-picker {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 8px 12px 18px;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: center;
+}
+
+.file-picker strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.file-picker span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.upload-actions .primary,
+.upload-actions .secondary,
+.upload-confirm {
+  width: auto;
+  margin-top: 0;
+}
+
+.upload-rules {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 20px;
+  border-radius: 14px;
+  color: #42515c;
+  background: #f1f6f7;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.upload-rules strong {
+  margin-bottom: 2px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.upload-rules span::before {
+  margin-right: 7px;
+  color: var(--accent);
+  content: '✓';
+  font-weight: 900;
+}
+
+.upload-examples {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid #d4e4e4;
+  color: #52616b;
+  font-size: 11px;
+}
+
+.upload-examples b { color: var(--ink); font-size: 12px; }
+.upload-examples p { margin: 0; line-height: 1.45; }
+.upload-examples em { color: #087c5d; font-style: normal; font-weight: 700; }
+.upload-examples p:nth-of-type(n + 2) em { color: #b91c1c; }
+.upload-examples code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: #334155;
+  background: #e5eef0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.upload-report {
+  margin-top: 20px;
+  padding: 17px;
+  border: 1px solid;
+  border-radius: 14px;
+}
+
+.upload-report.has-errors {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+.upload-report.is-ready {
+  border-color: #9dd8c8;
+  background: #f4fcf9;
+}
+
+.upload-report-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.upload-report-icon {
+  width: 35px;
+  height: 35px;
+  font-weight: 900;
+}
+
+.has-errors .upload-report-icon {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.is-ready .upload-report-icon {
+  color: #087c5d;
+  background: #d9f5ea;
+}
+
+.upload-report-head strong,
+.upload-report-head span {
+  display: block;
+}
+
+.upload-report-head strong {
+  color: var(--ink);
+}
+
+.upload-report-head span,
+.upload-note {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.upload-issues {
+  display: grid;
+  gap: 6px;
+  max-height: 270px;
+  margin: 15px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.upload-issues li {
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: rgba(254, 226, 226, 0.56);
+  font-size: 12px;
+}
+
+.upload-issues b {
+  color: #b91c1c;
+}
+
+.upload-confirm {
+  margin-top: 15px;
+}
+
+.upload-success {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 13px 16px;
+  border: 1px solid #9dd8c8;
+  border-radius: 12px;
+  color: #087c5d;
+  background: #f4fcf9;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .upload-steps,
+  .upload-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-actions {
+    flex-direction: column;
+  }
+
+  .upload-actions .primary,
+  .upload-actions .secondary,
+  .upload-confirm {
+    width: 100%;
+  }
+
+  .powerbi-builder-grid,
+  .powerbi-data-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .powerbi-data-filters .select-filter:last-child {
+    grid-column: auto;
+  }
+
+  .powerbi-builder-actions {
+    flex-direction: column;
+  }
+
+  .powerbi-builder-actions .primary,
+  .powerbi-builder-actions .secondary {
+    width: 100%;
+  }
+
+  .powerbi-visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .report-filter-bar .select-filter {
+    min-width: 0;
+  }
+
+  .powerbi-open-report {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .powerbi-open-report .primary { width: 100%; }
+
+  .powerbi-chart-wrap {
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .powerbi-line-chart {
+    min-width: 520px;
+  }
+}
+
+@media (max-width: 520px) {
+  .main {
+    padding: 14px;
+  }
+
+  .panel,
+  .powerbi-builder,
+  .powerbi-visual-report {
+    padding: 14px;
+  }
+
+  .topbar h1 {
+    font-size: 25px;
+  }
+
+  .powerbi-builder .panel-title > span,
+  .powerbi-visual-report .panel-title > span,
+  .powerbi-embed-filters .panel-title > span {
+    font-size: 12px;
+  }
+
+  .report-filter-bar {
+    grid-template-columns: 1fr;
+    padding: 8px;
+  }
+
+  .powerbi-filter-summary {
+    gap: 6px;
+  }
+
+  .powerbi-filter-summary span {
+    width: 100%;
+  }
+
+  .powerbi-chart-wrap {
+    padding: 0 8px 5px;
+  }
+
+  .powerbi-chart-legend {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .powerbi-report-surface {
+    min-height: auto;
+  }
+
+  .powerbi-report-surface iframe {
+    height: 68vh;
+    min-height: 520px;
+  }
+
+  .powerbi-placeholder {
+    min-height: 420px;
+    padding: 20px;
   }
 }
