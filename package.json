@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node tools/test.js",
     "prepare:vite": "node tools/patch-vite-windows.js",
     "dev": "node server/static-server.js",
     "dev:vite": "npm run prepare:vite && vite --host 127.0.0.1",

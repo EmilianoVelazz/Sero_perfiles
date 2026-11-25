@@ -20,6 +20,9 @@ import {
   Upload,
 } from 'lucide-react';
 import './styles.css';
+import { readImportWorkbook } from './import-workbook.js';
+import { normalizeDiseaseName, normalizeFarmName } from '../shared/text.js';
+import { parseCutoff } from '../shared/numbers.js';
 
 const API_BASE = import.meta.env?.VITE_API_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:3002/api' : '/api');
 const PAGE_SIZE = 100;
@@ -155,7 +158,7 @@ const initialRecords = [
     laboratorio: 'Lapisa',
     caso: 'LAP25SF220',
     numMuestras: 16,
-    enfermedad: 'APP',
+    enfermedad: 'App',
     tecnica: 'ELISA',
     resultado: 0.19,
     puntoCorte: 0.5,
@@ -195,7 +198,7 @@ const options = {
   flujo: ['Joya', 'Tejas', 'FASA', 'Zacatecas', 'Sanfandila', 'Tepuza', 'Alamos', 'Waris'],
   funcion: ['Linea', 'Hembra', 'GDU'],
   laboratorio: ['DCV', 'UNAM', 'Lapisa', 'BI', 'LIVE'],
-  enfermedad: ['Mycoplasma', 'PRRS', 'Influenza', 'APP', 'Ojo Azul', 'Influenza H1N2'],
+  enfermedad: ['Mycoplasma', 'PRRS', 'Influenza', 'App', 'Ojo Azul'],
   tecnica: ['ELISA', 'VSN'],
   interpretacion: ['Positivo', 'Negativo', 'Sospechoso'],
 };
@@ -895,7 +898,7 @@ function RecordForm({ form, setForm, onSubmit }) {
         <Select label="Enfermedad" value={form.enfermedad} options={options.enfermedad} onChange={(v) => update('enfermedad', v)} />
         <Select label="Tecnica" value={form.tecnica} options={options.tecnica} onChange={(v) => update('tecnica', v)} />
         <Field label="Resultado" type="number" min="0" step="0.001" value={form.resultado} onChange={(v) => update('resultado', v)} />
-        <Field label="Punto de corte" type="number" min="0" step="0.001" value={form.puntoCorte} onChange={(v) => update('puntoCorte', v)} />
+        <Field label="Punto de corte" type="number" step="any" value={form.puntoCorte} onChange={(v) => update('puntoCorte', v)} />
         <Select label="Interpretacion" value={form.interpretacion} options={options.interpretacion} onChange={(v) => update('interpretacion', v)} />
         <label className="field wide">
           <span>Comentarios</span>
@@ -1042,10 +1045,14 @@ function PowerBiPanel({ apiRequest }) {
   const overallResult = chartRows.length ? chartRows.reduce((sum, row) => sum + row.result, 0) / chartRows.length : 0;
   const overallCut = chartRows.length ? chartRows.reduce((sum, row) => sum + row.cut, 0) / chartRows.length : 0;
   const chartMax = Math.max(50, Math.ceil(Math.max(...chartRows.map((row) => Math.max(row.result, row.cut)), 0) / 10) * 10);
-  const chartY = (value) => 188 - (Number(value || 0) / chartMax) * 146;
+  const chartMin = Math.min(0, Math.floor(Math.min(...chartRows.map((row) => Math.min(row.result, row.cut)), 0) / 10) * 10);
+  const chartY = (value) => 188 - ((Number(value || 0) - chartMin) / (chartMax - chartMin)) * 146;
   const chartX = (index) => 72 + (index * 532) / Math.max(1, chartRows.length - 1);
   const chartPoint = (value, index) => `${chartX(index)},${chartY(value)}`;
-  const chartTicks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => ({ value: chartMax * fraction, y: chartY(chartMax * fraction) }));
+  const chartTicks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+    const value = chartMin + (chartMax - chartMin) * fraction;
+    return { value, y: chartY(value) };
+  });
   const resultPoints = chartRows.map((row, index) => chartPoint(row.result, index)).join(' ');
   const cutPoints = chartRows.map((row, index) => chartPoint(row.cut, index)).join(' ');
   const chartLabelStep = chartRows.length > 14 ? Math.ceil(chartRows.length / 9) : 1;
@@ -1210,7 +1217,8 @@ function BulkUpload({ apiRequest }) {
       ['No cambies los nombres de las columnas.'],
       ['Obligatorios: Fecha, Empresa, Granja y Enfermedad.'],
       ['Fecha: usa AAAA-MM-DD, por ejemplo 2026-04-08. No se aceptan fechas inexistentes ni texto.'],
-      ['Los campos numéricos no aceptan letras, fórmulas ni valores negativos. Num muestras debe ser entero.'],
+      ['Los campos numéricos no aceptan letras ni fórmulas. Edad y Resultado deben ser no negativos; Num muestras debe ser entero no negativo.'],
+      ['Punto de corte acepta valores positivos, negativos y decimales; por ejemplo 0.5, -0.25 o -0,25.'],
       ['Empresa, Flujo, Función, Laboratorio, Enfermedad, Técnica e Interpretación deben coincidir con las opciones del sistema.'],
       [],
       ['Ejemplo válido'],
@@ -1241,7 +1249,7 @@ function BulkUpload({ apiRequest }) {
       if (!/\.(xlsx|xls|csv)$/i.test(file.name)) throw new Error('Selecciona un archivo .xlsx, .xls o .csv.');
       const XLSX = await import('xlsx');
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { cellDates: true, raw: true });
+      const workbook = readImportWorkbook(XLSX, buffer, file.name);
       const sheetName = workbook.SheetNames.includes('Registros') ? 'Registros' : workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       if (!sheet) throw new Error('No se encontró una hoja para importar.');
@@ -1282,11 +1290,15 @@ function BulkUpload({ apiRequest }) {
           const sourceCell = column === undefined ? null : sheet[XLSX.utils.encode_cell({ r: rowOffset + 1, c: column })];
           if (sourceCell?.f) errors.push({ cell, message: `${label} no puede contener fórmulas. Escribe el valor final.` });
           if (key === 'fecha') value = normalizeDate(value);
-          else value = String(value ?? '').trim();
+          else value = String(value ?? '').normalize('NFC').trim();
+          if (key === 'granja') value = normalizeFarmName(value);
+          if (key === 'enfermedad') value = normalizeDiseaseName(value);
           record[key] = value;
+          if (String(value).includes('\uFFFD')) errors.push({ cell, message: `${label} contiene texto dañado (�). Corrige el archivo original.` });
           if (required && !value) errors.push({ cell: cell || 'Encabezados', message: `${label} es obligatorio.` });
           if (value && typeof value === 'string' && /[\u0000-\u001F\u007F]/.test(value)) errors.push({ cell, message: `${label} contiene un carácter no permitido.` });
-          if (value && typeof value === 'string' && /^[=+\-@]/.test(value) && key !== 'fecha') errors.push({ cell, message: `${label} no puede iniciar con un carácter de fórmula.` });
+          const signedCutoff = key === 'puntoCorte' && parseCutoff(value).valid;
+          if (value && typeof value === 'string' && /^[=+\-@]/.test(value) && key !== 'fecha' && !signedCutoff) errors.push({ cell, message: `${label} no puede iniciar con un carácter de fórmula.` });
           if (limits[key] && value && !/^[\p{L}\p{N}\s.,()/#-]+$/u.test(String(value))) errors.push({ cell, message: `${label} contiene caracteres especiales no permitidos.` });
           if (limits[key] && value && String(value).length > limits[key]) errors.push({ cell, message: `${label} excede ${limits[key]} caracteres.` });
           if (value && catalogValues[key]) {
@@ -1300,6 +1312,12 @@ function BulkUpload({ apiRequest }) {
           if (fieldIndex[key] === undefined) return;
           const value = record[key];
           if (value === '') return;
+          if (key === 'puntoCorte') {
+            const parsed = parseCutoff(value);
+            if (!parsed.valid) errors.push({ cell: `${XLSX.utils.encode_col(fieldIndex[key])}${rowNumber}`, message: `${label} ${displayValue(value)} debe ser un número válido: positivo, negativo o decimal.` });
+            else record[key] = parsed.value;
+            return;
+          }
           const pattern = integer ? /^\d+$/ : /^\d+(?:[.,]\d+)?$/;
           if (!pattern.test(value) || Number(value.replace(',', '.')) < 0) errors.push({ cell: `${XLSX.utils.encode_col(fieldIndex[key])}${rowNumber}`, message: `${label} ${displayValue(value)} debe ser ${integer ? 'un entero' : 'un número'} no negativo.` });
           else record[key] = value.replace(',', '.');

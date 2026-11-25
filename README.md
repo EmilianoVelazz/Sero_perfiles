@@ -70,7 +70,14 @@ del sistema para HTTPS, ejecutalo con `node --use-system-ca`.
 
 ## Verificación
 
+La carga CSV detecta UTF-8 (con o sin BOM), Windows-1252 y UTF-16 con BOM.
+Los acentos se normalizan a NFC antes de validar y guardar. Los archivos XLS/XLSX
+conservan su lectura binaria. Si un archivo ya contiene el símbolo de reemplazo
+`�`, se rechaza con un mensaje para corregir el original en lugar de almacenarlo.
+La conexión MySQL declara explícitamente `utf8mb4_unicode_ci`.
+
 ```powershell
+npm test
 node --check server/index.js
 npm run build
 npm audit

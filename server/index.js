@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import dotenv from 'dotenv';
 import express from 'express';
 import { createDatabase } from './database.js';
+import { normalizeDiseaseName, normalizeRecordText } from '../shared/text.js';
+import { parseCutoff } from '../shared/numbers.js';
 
 dotenv.config();
 
@@ -99,7 +101,7 @@ const importCatalogs = {
   flujo: ['Joya', 'Tejas', 'FASA', 'Zacatecas', 'Sanfandila', 'Tepuza', 'Alamos', 'Waris'],
   funcion: ['Linea', 'Hembra', 'GDU'],
   laboratorio: ['DCV', 'UNAM', 'Lapisa', 'BI', 'LIVE'],
-  enfermedad: ['Mycoplasma', 'PRRS', 'Influenza', 'APP', 'Ojo Azul', 'Influenza H1N2'],
+  enfermedad: ['Mycoplasma', 'PRRS', 'Influenza', 'App', 'Ojo Azul'],
   tecnica: ['ELISA', 'VSN'],
   interpretacion: ['Positivo', 'Negativo', 'Sospechoso'],
   muestra: ['Suero'],
@@ -225,14 +227,18 @@ function canonicalImportValue(value) {
 
 function validateRecord(record) {
   const errors = [];
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'string' && value.includes('\uFFFD')) errors.push(`${key} contiene texto dañado (�). Corrige el texto original.`);
+  }
   const date = parseRecordDate(record.fecha);
   if (!date) errors.push('La fecha debe ser válida.');
   if (!String(record.empresa || '').trim()) errors.push('La empresa es obligatoria.');
   if (!String(record.granja || '').trim()) errors.push('La granja es obligatoria.');
   if (!String(record.enfermedad || '').trim()) errors.push('La enfermedad es obligatoria.');
-  for (const [key, label] of [['edad', 'Edad'], ['resultado', 'Resultado'], ['puntoCorte', 'Punto de corte']]) {
+  for (const [key, label] of [['edad', 'Edad'], ['resultado', 'Resultado']]) {
     if (!isNonNegativeNumber(record[key])) errors.push(`${label} debe ser un número no negativo.`);
   }
+  if (!parseCutoff(record.puntoCorte).valid) errors.push('Punto de corte debe ser un número válido: positivo, negativo o decimal.');
   if (!isNonNegativeInteger(record.numMuestras)) errors.push('Número de muestras debe ser un entero no negativo.');
   const limits = { empresa: 120, flujo: 120, granja: 180, caseta: 80, lote: 100, funcion: 100, identidad: 100, muestra: 100, laboratorio: 120, caso: 120, enfermedad: 140, tecnica: 100, interpretacion: 80 };
   for (const [key, limit] of Object.entries(limits)) {
@@ -274,7 +280,7 @@ function recordParams(record, date, userId) {
     enfermedad: record.enfermedad,
     tecnica: emptyToNull(record.tecnica),
     resultado: emptyToNull(record.resultado),
-    punto_corte: emptyToNull(record.puntoCorte),
+    punto_corte: parseCutoff(record.puntoCorte).value,
     interpretacion: emptyToNull(record.interpretacion),
     comentarios: emptyToNull(record.comentarios),
     creado_por: userId,
@@ -332,7 +338,7 @@ function buildSeroperfilesFilters(query) {
 
   if (enfermedad) {
     where.push('enfermedad = :enfermedad');
-    params.enfermedad = enfermedad;
+    params.enfermedad = normalizeDiseaseName(enfermedad);
   }
 
   if (laboratorio) {
@@ -669,8 +675,9 @@ app.post('/api/seroperfiles/bulk', requireWriteRole, async (request, response) =
 
   const prepared = [];
   const errors = [];
-  records.forEach((record, index) => {
-    const { errors: rowErrors, date } = validateRecord(record || {});
+  records.forEach((input, index) => {
+    const record = normalizeRecordText(input || {});
+    const { errors: rowErrors, date } = validateRecord(record);
     const row = Number(record?._rowNumber) || index + 2;
     if (rowErrors.length) {
       rowErrors.forEach((message) => errors.push({ row, message }));
@@ -697,7 +704,7 @@ app.post('/api/seroperfiles/bulk', requireWriteRole, async (request, response) =
 });
 
 app.post('/api/seroperfiles', requireWriteRole, async (request, response) => {
-  const record = request.body || {};
+  const record = normalizeRecordText(request.body || {});
   const { errors, date } = validateRecord(record);
   if (errors.length > 0) {
     return response.status(400).json({ message: errors.join(' ') });

@@ -47,6 +47,7 @@ export function createDatabase() {
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'registro_seroperfiles',
+      charset: 'utf8mb4_unicode_ci',
       waitForConnections: true,
       connectionLimit: 10,
       namedPlaceholders: true,
